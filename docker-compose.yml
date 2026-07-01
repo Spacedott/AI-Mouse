@@ -1,0 +1,29 @@
+# Dashboard + read API. These can run under WSL2/Docker.
+#
+# NOTE: the CAPTURE AGENT and OVERLAY are NOT here on purpose — they need a
+# global mouse hook on the Windows host and cannot see mouse events from
+# inside a container. Run those directly on Windows (see README).
+#
+# The ./data volume holds the local SQLite store shared by the agent (writer)
+# and the api (reader). Keep this path in sync with config.json / MOUSE_AI_DB.
+
+services:
+  api:
+    build:
+      context: ./api
+    command: uvicorn mouse_ai_api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      - MOUSE_AI_DB=/data/mouse_ai.db
+    volumes:
+      - ./data:/data:ro
+    ports:
+      - "8000:8000"
+
+  dashboard:
+    build:
+      context: ./dashboard
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api

@@ -1,0 +1,34 @@
+# --- Captured behavior data: NEVER commit this ---
+# The click database is private, local-only data. It must not go to GitHub.
+/data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Local machine-specific config (copy config.example.json -> config.json)
+config.json
+
+# Exported reports / data
+*.pdf
+exports/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# --- Node / dashboard ---
+node_modules/
+dist/
+.vite/
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

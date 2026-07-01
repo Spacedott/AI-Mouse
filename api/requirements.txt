@@ -1,0 +1,4 @@
+# Local read API + PDF report (can run under WSL/Docker)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+reportlab>=4.0

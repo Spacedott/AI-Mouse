@@ -1,0 +1,8 @@
+{
+  "//": "Copy this to config.json and adjust. config.json is gitignored.",
+  "db_path": "data/mouse_ai.db",
+  "grid": {
+    "rows": 4,
+    "cols": 4
+  }
+}
