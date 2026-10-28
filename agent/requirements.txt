@@ -1,3 +1,3 @@
 # Capture agent (run on the Windows host)
-pynput>=1.7,<2.0        # global mouse hook
-pywin32>=306 ; sys_platform == "win32"   # monitor enumeration (optional but recommended)
+pynput==1.8.2        # global mouse hook
+pywin32==312 ; sys_platform == "win32"   # native monitor enumeration

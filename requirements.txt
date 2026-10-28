@@ -1,0 +1,4 @@
+# Complete Windows test environment; install into a fresh Python 3.12 venv.
+-r agent/requirements.txt
+-r overlay/requirements.txt
+-r api/requirements.txt

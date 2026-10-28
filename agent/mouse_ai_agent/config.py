@@ -1,7 +1,8 @@
 """Configuration for the capture agent.
 
 Values come from config.json at the repo root (see config.example.json),
-with sane defaults so the agent runs out of the box.
+with sane defaults so the agent runs out of the box. The MOUSE_AI_DB
+environment variable overrides db_path.
 """
 from __future__ import annotations
 
@@ -28,7 +29,10 @@ class Config:
         if path.exists():
             data = json.loads(path.read_text(encoding="utf-8"))
 
-        db_path = data.get("db_path") or str(REPO_ROOT / "data" / "mouse_ai.db")
+        # MOUSE_AI_DB wins, matching the API, so a demo can point both at
+        # a separate store without touching config.json.
+        db_path = (os.environ.get("MOUSE_AI_DB") or data.get("db_path")
+                   or str(REPO_ROOT / "data" / "mouse_ai.db"))
         # Make relative paths resolve against the repo root, not the CWD.
         if not os.path.isabs(db_path):
             db_path = str(REPO_ROOT / db_path)

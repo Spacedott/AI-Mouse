@@ -9,6 +9,12 @@
 
 # Local machine-specific config (copy config.example.json -> config.json)
 config.json
+.env
+.env.*
+!.env.example
+.aws/
+.codex/
+.agents/
 
 # Exported reports / data
 *.pdf
@@ -21,6 +27,7 @@ __pycache__/
 venv/
 env/
 *.egg-info/
+*.log
 
 # --- Node / dashboard ---
 node_modules/

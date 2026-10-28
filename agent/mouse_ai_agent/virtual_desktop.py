@@ -43,6 +43,12 @@ def get_virtual_desktop() -> VirtualDesktop:
     if sys.platform == "win32":
         import ctypes
 
+        # Match pynput's physical click coordinates on mixed-DPI desktops.
+        # A GUI host such as Qt may already have established this awareness.
+        try:
+            ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+        except AttributeError:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
         gsm = ctypes.windll.user32.GetSystemMetrics
         return VirtualDesktop(
             x=gsm(SM_XVIRTUALSCREEN),

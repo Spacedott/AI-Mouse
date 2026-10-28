@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mouse-AI · Live Demo</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --surface: #ffffff; --ink: #1d1b19; --ink-2: #57524c; --muted: #8a847c;
+    --line: #e7e3dd; --accent: #d9480f; --ok: #2b8a3e;
+    /* Sequential ramp (one hue, light -> dark) for click magnitude. */
+    --on-hot: #ffffff; --s0: #fff4e6; --s1: #ffd8a8; --s2: #ffa94d; --s3: #f76707; --s4: #c2410c; --s5: #7c2d12;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141312; --surface: #1d1b19; --ink: #f3f1ee; --ink-2: #c4bfb8; --muted: #8a847c;
+      --line: #34302c; --accent: #ff8a3d; --ok: #69db7c;
+      --on-hot: #1d1b19; --s0: #2a211b; --s1: #5a2e12; --s2: #8f3b0c; --s3: #c2410c; --s4: #f76707; --s5: #ffa94d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.5 "Segoe UI", system-ui, sans-serif; }
+  nav { position: sticky; top: 0; z-index: 5; display: flex; gap: 20px; align-items: center;
+        padding: 12px 32px; background: color-mix(in srgb, var(--bg) 88%, transparent);
+        backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  nav b { margin-right: auto; }
+  nav a { color: var(--ink-2); text-decoration: none; font-size: 14px; }
+  nav a:hover { color: var(--accent); }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line);
+          color: var(--muted); }
+  .pill.live { color: var(--ok); border-color: var(--ok); }
+  .pill.live::before { content: "● "; }
+  section { max-width: 1100px; margin: 0 auto; padding: 72px 32px 24px; }
+  h1 { font-size: 52px; line-height: 1.1; margin: 0 0 16px; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  h2 { font-size: 30px; margin: 0 0 8px; }
+  .lede { font-size: 20px; color: var(--ink-2); max-width: 720px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--accent);
+             font-weight: 600; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
+           margin-top: 28px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+  .flow { display: flex; align-items: stretch; gap: 0; margin-top: 28px; flex-wrap: wrap; }
+  .flow .card { flex: 1 1 180px; }
+  .flow .arrow { align-self: center; padding: 0 8px; color: var(--muted); font-size: 22px; }
+  .tag { display: inline-block; font-size: 11px; color: var(--muted); border: 1px solid var(--line);
+         border-radius: 4px; padding: 0 6px; margin-bottom: 8px; }
+  .btn { display: inline-block; padding: 10px 18px; border-radius: 8px; background: var(--accent);
+         color: #fff; text-decoration: none; font-weight: 600; font-size: 15px; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+
+  /* Live panel */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px;
+           margin: 24px 0; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; }
+  .tile .k { font-size: 13px; color: var(--muted); }
+  .tile .v { font-size: 36px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tile .s { font-size: 13px; color: var(--ink-2); }
+  .panels { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; }
+  @media (max-width: 860px) { .panels { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .panel h3 { margin: 0 0 2px; font-size: 16px; }
+  .panel .sub { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .grid { display: grid; gap: 2px; aspect-ratio: 16 / 9; }
+  .cell { position: relative; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+          font-size: 13px; font-variant-numeric: tabular-nums; transition: background .4s; cursor: default; }
+  .cell.bump { animation: bump .9s ease-out; }
+  @keyframes bump { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+  .legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .legend .ramp { display: flex; gap: 2px; }
+  .legend .ramp i { width: 22px; height: 10px; border-radius: 2px; }
+  svg text { fill: var(--muted); font-size: 11px; }
+  .tip { position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--bg);
+         font-size: 13px; padding: 6px 10px; border-radius: 6px; opacity: 0; transition: opacity .1s; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .err { color: var(--accent); font-size: 14px; }
+  ol.steps li { margin-bottom: 10px; }
+  kbd { font: 12px Consolas, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 48px 0; }
+</style>
+</head>
+<body>
+<nav>
+  <b>Mouse-AI</b>
+  <a href="#what">What it is</a>
+  <a href="#how">How it works</a>
+  <a href="#privacy">Privacy</a>
+  <a href="#live">Live demo</a>
+  <a href="#script">Run sheet</a>
+  <span id="status" class="pill">connecting…</span>
+</nav>
+
+<section id="top">
+  <div class="eyebrow">Desktop-wide click analytics · local-first</div>
+  <h1>Learn where people <span>actually click</span>,<br />then help them get there faster.</h1>
+  <p class="lede">Mouse-AI records clicks across every monitor, maps them onto one grid
+    over the whole desktop, and turns that into live heatmaps, usage trends and a
+    shareable report. Nothing leaves the machine.</p>
+  <p><a class="btn" href="#live">Jump to the live demo</a></p>
+</section>
+
+<section id="what">
+  <div class="eyebrow">What it does</div>
+  <h2>Capture → Understand → Assist</h2>
+  <div class="cards">
+    <div class="card"><h3>Capture</h3><p>A small Windows agent hooks the mouse globally and records
+      every click, on both monitors, into a local database that builds up across sessions.</p></div>
+    <div class="card"><h3>Understand</h3><p>Clicks land in grid zones over the virtual desktop. The dashboard
+      shows the hot zones, session history and trends, and exports a PDF report.</p></div>
+    <div class="card"><h3>Assist</h3><p>A transparent overlay glows where you click. A quick double-click
+      sends the pointer back to your busiest spot, so you don't have to drag across two screens.</p></div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="eyebrow">Architecture</div>
+  <h2>Two runtimes, one local file</h2>
+  <p class="lede">A browser can only see clicks inside its own window, so capture runs natively on
+    Windows. Everything else is an ordinary web service. They share a single SQLite file.</p>
+  <div class="flow">
+    <div class="card"><span class="tag">Windows · Python</span><h3>Capture agent</h3>
+      <p>Global hook; dual-monitor; unified grid.</p></div>
+    <div class="arrow">→</div>
+    <div class="card"><span class="tag">Local file</span><h3>SQLite store</h3>
+      <p>Raw clicks kept in full, plus per-zone totals.</p></div>
+    <div class="arrow">→</div>
+    <div class="card"><span class="tag">FastAPI</span><h3>Read API</h3>
+      <p>Read-only JSON and the PDF report.</p></div>
+    <div class="arrow">→</div>
+    <div class="card"><span class="tag">Browser</span><h3>Dashboard</h3>
+      <p>Heatmap, sessions, trends (this page).</p></div>
+  </div>
+  <div class="cards">
+    <div class="card"><span class="tag">Windows · PySide6</span><h3>Live overlay</h3>
+      <p>One click-through window per monitor. Fading glows and pointer return. It never takes focus,
+        so the app underneath still gets every click.</p></div>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="eyebrow">Privacy by design</div>
+  <h2>Your clicks stay on your machine</h2>
+  <div class="cards">
+    <div class="card"><h3>Local only</h3><p>No cloud and no uploads. The API only listens on this computer.</p></div>
+    <div class="card"><h3>Clicks, not keystrokes</h3><p>Records button presses and positions only. No movement trails, typing or screenshots.</p></div>
+    <div class="card"><h3>Aggregated reports</h3><p>PDF reports share zone totals and trends by default, not raw coordinates.</p></div>
+  </div>
+</section>
+
+<section id="live">
+  <div class="eyebrow">Live</div>
+  <h2>Live from this computer</h2>
+  <p class="lede">Click anywhere, in Word, the browser or the taskbar, and watch the numbers move.
+    This page refreshes every 1.5 seconds.</p>
+  <p id="error" class="err" hidden></p>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">This session</div><div class="v" id="t-live">–</div><div class="s" id="t-live-s">clicks so far</div></div>
+    <div class="tile"><div class="k">All-time clicks</div><div class="v" id="t-total">–</div><div class="s" id="t-sessions">–</div></div>
+    <div class="tile"><div class="k">Busiest zone</div><div class="v" id="t-zone">–</div><div class="s" id="t-zone-s">–</div></div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <h3>Clicks by desktop zone</h3>
+      <p class="sub">The grid is stretched across all monitors. Darker means more clicks (all sessions).</p>
+      <div id="grid" class="grid"></div>
+      <div class="legend">fewer <span class="ramp"><i style="background:var(--s0)"></i><i style="background:var(--s1)"></i><i style="background:var(--s2)"></i><i style="background:var(--s3)"></i><i style="background:var(--s4)"></i><i style="background:var(--s5)"></i></span> more</div>
+    </div>
+    <div class="panel">
+      <h3>Clicks per session</h3>
+      <p class="sub">Oldest to newest. The last bar is the session running now.</p>
+      <svg id="trend" width="100%" height="240" role="img" aria-label="Clicks per session"></svg>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px">
+    <h3>Sessions</h3>
+    <p class="sub">The same data as a table. <a href="#" id="pdf-all">Download the all-time PDF report</a></p>
+    <table><thead><tr><th>Session</th><th>Started</th><th>Duration</th><th style="text-align:right">Clicks</th><th>Report</th></tr></thead>
+      <tbody id="rows"></tbody></table>
+  </div>
+</section>
+
+<section id="script">
+  <div class="eyebrow">Presenter run sheet</div>
+  <h2>A five-minute walkthrough</h2>
+  <ol class="steps">
+    <li><b>Story (1 min).</b> Scroll through <i>What it is</i>, <i>How it works</i> and <i>Privacy</i> on this page.</li>
+    <li><b>History (30 s).</b> In <i>Live demo</i>, point out last week's sample sessions, the trend, and the busy ribbon zone (top-left).</li>
+    <li><b>Live capture (2 min).</b> Switch to Word and work through the task list in
+      <i>Mouse-AI-Practice.docx</i>. Orange glows follow each click. Switch back here: <i>This session</i> has grown and the zones have lit up.</li>
+    <li><b>Assist (30 s).</b> Move the pointer to the far corner of the other monitor and quickly double-click.
+      The pointer jumps back to the area you've been clicking most.</li>
+    <li><b>Report (30 s).</b> Click <i>PDF</i> on the current session row. The report shows aggregated totals only.</li>
+    <li><b>Wrap.</b> Press <kbd>Esc</kbd> to hide the overlay. Run <i>Stop-Demo</i> to close everything.</li>
+  </ol>
+</section>
+
+<footer>Mouse-AI · everything on this page is read from the local API on this machine</footer>
+<div id="tip" class="tip"></div>
+
+<script>
+const API = new URLSearchParams(location.search).get("api") || "http://localhost:8000";
+const $ = (id) => document.getElementById(id);
+const tip = $("tip");
+const prev = new Map();
+let pdfBase = API + "/api/report.pdf";
+$("pdf-all").href = pdfBase;
+
+function showTip(e, html) {
+  tip.innerHTML = html; tip.style.opacity = 1;
+  tip.style.left = (e.clientX + 14) + "px"; tip.style.top = (e.clientY + 14) + "px";
+}
+function hideTip() { tip.style.opacity = 0; }
+
+async function get(path) {
+  const r = await fetch(API + path, { cache: "no-store" });
+  if (!r.ok) throw new Error(path + " → " + r.status);
+  return r.json();
+}
+
+function rampColor(t) {
+  // 0 clicks gets the lightest step; otherwise bucket into the five darker steps.
+  if (t <= 0) return "var(--s0)";
+  return `var(--s${Math.min(5, 1 + Math.floor(t * 5))})`;
+}
+
+function renderGrid(zones, rows, cols) {
+  const byId = new Map(zones.map((z) => [z.zone_id, z.total_clicks]));
+  const max = Math.max(1, ...zones.map((z) => z.total_clicks));
+  const total = zones.reduce((s, z) => s + z.total_clicks, 0) || 1;
+  const grid = $("grid");
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  if (grid.children.length !== rows * cols) grid.innerHTML = "";
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const id = `r${r}c${c}`, n = byId.get(id) || 0, t = n / max;
+    let el = grid.children[r * cols + c];
+    if (!el) {
+      el = document.createElement("div"); el.className = "cell"; grid.appendChild(el);
+      el.addEventListener("mouseleave", hideTip);
+    }
+    el.onmousemove = (e) => showTip(e, `<b>Row ${r + 1}, column ${c + 1}</b><br>${n.toLocaleString()} clicks · ${(100 * n / total).toFixed(1)}%`);
+    el.style.background = rampColor(t);
+    el.style.color = t > 0.5 ? "var(--on-hot)" : "var(--ink-2)";
+    el.textContent = n ? n.toLocaleString() : "";
+    if (prev.has(id) && n > prev.get(id)) {
+      el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+    }
+    prev.set(id, n);
+  }
+}
+
+function renderTrend(trend, liveId) {
+  const svg = $("trend");
+  const W = svg.clientWidth || 400, H = 240, padL = 36, padB = 24, padT = 12;
+  const max = Math.max(1, ...trend.map((d) => d.clicks));
+  const nice = Math.pow(10, Math.floor(Math.log10(max)));
+  const top = Math.ceil(max / nice) * nice;
+  const n = Math.max(1, trend.length), slot = (W - padL) / n, bw = Math.max(4, Math.min(36, slot - 2));
+  let out = "";
+  for (const f of [0, 0.5, 1]) {
+    const y = padT + (H - padT - padB) * (1 - f);
+    out += `<line x1="${padL}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)" />`;
+    out += `<text x="${padL - 6}" y="${y + 4}" text-anchor="end">${Math.round(top * f)}</text>`;
+  }
+  trend.forEach((d, i) => {
+    const h = (H - padT - padB) * d.clicks / top, x = padL + i * slot + (slot - bw) / 2, y = H - padB - h;
+    const r = Math.min(4, h / 2, bw / 2);
+    const live = d.session_id === liveId;
+    // Bar with 4px rounded top, square at the baseline.
+    out += `<path d="M${x},${H - padB} V${y + r} Q${x},${y} ${x + r},${y} H${x + bw - r} Q${x + bw},${y} ${x + bw},${y + r} V${H - padB} Z"
+      fill="${live ? "var(--s4)" : "var(--s2)"}" />`;
+    out += `<rect x="${padL + i * slot}" y="${padT}" width="${slot}" height="${H - padT - padB}" fill="transparent"
+      data-i="${i}" class="hit" />`;
+    const day = new Date(d.started_t * 1000).toLocaleDateString(undefined, { weekday: "short" });
+    if (n <= 14 || i % Math.ceil(n / 14) === 0)
+      out += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${live ? "now" : day}</text>`;
+  });
+  svg.innerHTML = out;
+  svg.querySelectorAll(".hit").forEach((el) => {
+    const d = trend[+el.dataset.i];
+    el.addEventListener("mousemove", (e) => showTip(e,
+      `<b>${new Date(d.started_t * 1000).toLocaleString()}</b><br>${d.clicks.toLocaleString()} clicks${d.session_id === liveId ? " · live" : ""}`));
+    el.addEventListener("mouseleave", hideTip);
+  });
+}
+
+function fmtDur(s) {
+  if (!s.ended_t) return "running";
+  const m = Math.round((s.ended_t - s.started_t) / 60);
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
+}
+
+async function tick() {
+  try {
+    const [zones, sessions, trend] = await Promise.all([get("/api/zones"), get("/api/sessions"), get("/api/trends")]);
+    $("status").textContent = "live"; $("status").className = "pill live"; $("error").hidden = true;
+
+    const live = sessions.find((s) => !s.ended_t);
+    const rows = sessions[0]?.grid_rows || 4, cols = sessions[0]?.grid_cols || 4;
+    const total = zones.reduce((s, z) => s + z.total_clicks, 0);
+
+    $("t-live").textContent = live ? live.total_clicks.toLocaleString() : "–";
+    $("t-live-s").textContent = live ? "clicks · recording" : "the agent isn't recording";
+    $("t-total").textContent = total.toLocaleString();
+    $("t-sessions").textContent = `across ${sessions.length} session${sessions.length === 1 ? "" : "s"}`;
+    const top = zones[0];
+    if (top) {
+      const m = /^r(\d+)c(\d+)$/.exec(top.zone_id);
+      $("t-zone").textContent = m ? `R${+m[1] + 1} · C${+m[2] + 1}` : top.zone_id;
+      $("t-zone-s").textContent = `${(100 * top.total_clicks / (total || 1)).toFixed(0)}% of all clicks`;
+    }
+
+    renderGrid(zones, rows, cols);
+    renderTrend(trend, live?.session_id);
+    $("rows").innerHTML = sessions.map((s) => `<tr>
+      <td>${s.session_id.slice(0, 8)}${s.ended_t ? "" : ' <span class="pill live">live</span>'}</td>
+      <td>${new Date(s.started_t * 1000).toLocaleString()}</td>
+      <td>${fmtDur(s)}</td>
+      <td class="n">${s.total_clicks.toLocaleString()}</td>
+      <td><a href="${pdfBase}?session_id=${s.session_id}">PDF</a></td></tr>`).join("");
+  } catch (e) {
+    $("status").textContent = "offline"; $("status").className = "pill";
+    $("error").hidden = false;
+    $("error").textContent = `Can't reach the Mouse-AI API at ${API} (${e.message}). Start it with demo\\Start-Demo.cmd.`;
+  }
+}
+tick();
+setInterval(tick, 1500);
+window.addEventListener("resize", () => { prev.clear(); tick(); });
+</script>
+</body>
+</html>

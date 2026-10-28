@@ -9,6 +9,7 @@ Run:  uvicorn mouse_ai_api.main:app --port 8000
 from __future__ import annotations
 
 import os
+from contextlib import closing
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,25 +31,25 @@ app.add_middleware(
 
 @app.get("/api/zones")
 def get_zones():
-    with queries.open_ro(DB_PATH) as conn:
+    with closing(queries.open_ro(DB_PATH)) as conn:
         return queries.zone_totals(conn)
 
 
 @app.get("/api/sessions")
 def get_sessions():
-    with queries.open_ro(DB_PATH) as conn:
+    with closing(queries.open_ro(DB_PATH)) as conn:
         return queries.sessions(conn)
 
 
 @app.get("/api/trends")
 def get_trends():
-    with queries.open_ro(DB_PATH) as conn:
+    with closing(queries.open_ro(DB_PATH)) as conn:
         return queries.clicks_per_session(conn)
 
 
 @app.get("/api/report.pdf")
 def get_report(session_id: str | None = None):
-    with queries.open_ro(DB_PATH) as conn:
+    with closing(queries.open_ro(DB_PATH)) as conn:
         pdf = report.build_report_pdf(conn, session_id)
     return Response(
         content=pdf,
